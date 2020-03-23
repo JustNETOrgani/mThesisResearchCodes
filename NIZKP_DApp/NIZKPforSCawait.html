@@ -1,0 +1,520 @@
+<html>
+<body>
+    <head>
+        <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.0.0-beta.34/dist/web3.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
+        <script src="https://unpkg.com/ipfs@0.35.0/dist/index.min.js"></script>
+        <!--<script src="https://unpkg.com/ipfs-http-client/dist/index.min.js"></script>-->
+        <link rel="stylesheet" type="text/css" href="styles/awaitStyles.css">
+        <title>awaitNizkp</title>
+    </head>
+    <div id="top">
+        <div id="imgHolder"><img id="appImg" src="imgs/zkpImg.png" alt="zkpImg" title="App Image" /></div>
+        <div id="appTitleHolder">
+            <p id="appHeadingOne">Privacy-preservation in DApps</p>
+            <p id="appHeadingTwo">NIZKP awaiting user verification</p>
+        </div>
+    </div>
+    <div id="middleWrapper">
+        <div class="userEntries">
+            <div id="inputSection">
+                <div class="control-group">
+                    <input type="text" class="dataSection" value="" placeholder="Enter Public Key" id="pubKey">
+                </div>
+                <button onclick="verifyProof()" class="btn btn-primary btn-large btn-block">Confirm and Get Public
+                    Keys</button>
+                <strong></strong>
+                <p class="success" id="showNhideSuccess"></strong></p>
+                <strong></strong>
+                <p class="error" id="showNhideError"></strong></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="bottomDIV" style="overflow-x:auto">
+        <p id="tableHeadings">Retrieved Public Keys from Contract</p>
+        <table id="fetchedPubKeysArea">
+            <thread>
+                <tbody>
+
+                </tbody>
+            </thread>
+        </table>
+        <br>
+        <p id="tableHeadings">Transaction Data</p>
+        <table id="transactionDataArea">
+            <thread>
+                <tbody>
+
+                </tbody>
+            </thread>
+        </table>
+        <br>
+        <p id="tableHeadings">Signature details</p>
+        <table id="mySignatureArea">
+            <thread>
+                <tbody>
+
+                </tbody>
+            </thread>
+        </table>
+        <table id="mySignatureVoutput">
+            <thread>
+                <tbody>
+
+                </tbody>
+            </thread>
+        </table>
+    </div>
+</body>
+
+<script type="text/javascript" src="js/jquery321.js"></script>
+<script type="text/javascript" src="js/contractABI.js"></script>
+<script src="../improved_LwRS/bignumber.js"></script>
+<script src="../improved_LwRS/jssha.js"></script>
+
+<script>
+    if (typeof web3 !== 'undefined') {
+        web3 = new Web3(web3.currentProvider);
+    }
+    else {
+        // set the provider you want from Web3.providers
+        web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545")); // This node address should be same for Ganache.
+        // var provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:7545');
+        //web3 = new Web3(new Web3.providers.HttpProvider('https://kovan.infura.io/v3/id'));
+    }
+    web3.eth.getAccounts().then(accounts => {
+        console.log(accounts[0])
+        web3.eth.defaultAccount = accounts[0]
+    });
+
+    var nizkpContract = new web3.eth.Contract(ABI, contractAddress, { defaultGas: suppliedGas });// End of ABi Code from Remix.
+
+    // Interation with the Blockchain from the web app begins.
+    const staticIPNShash = 'QmV7EMuAEfQyBFckj8t81tRS1eddutiyX9CMxWKvrrtHZX' // Lab.
+    //const staticIPNShash = 'QmX9G52Vkh3hkgiSqZqUEhJhsFTPhjQGRchWycvemoCcrx' // Laptop.
+
+    function getHash(input) {
+        return web3.utils.soliditySha3(
+            { t: 'uint256', v: input } // t: type and v: value;
+        );
+    }
+
+    function trackEventMsg() {
+        nizkpContract.getPastEvents('message', { fromBlock: 'latest', toBlock: 'latest' },
+            function (err, results) {
+                if (err) {
+                    $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                    document.getElementById("showNhideError").innerHTML = "There was error.";
+                    return;
+                }
+                // Else use the data recieved.
+                for (var { returnValues: { msg: EventMsg } } of results) {
+                    console.log('Event Message: ' + EventMsg);
+                    $("#showNhideSuccess").show(); // Display the hidden div to accept the comming entries.
+                    document.getElementById("showNhideSuccess").innerHTML = EventMsg;
+                    return;
+                }
+            });
+    }
+
+    function trackEventFailed() {
+        nizkpContract.getPastEvents('failed', { fromBlock: 'latest', toBlock: 'latest' },
+            function (err, results) {
+                if (err) {
+                    $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                    document.getElementById("showNhideError").innerHTML = "There was error.";
+                    return;
+                }
+                // Else use the data recieved.
+                // For wrong proof from Contract.
+                for (var { returnValues: { msg: EventMsg } } of results) {
+                    console.log('Event Message: ' + EventMsg);
+                    $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                    document.getElementById("showNhideError").innerHTML = EventMsg;
+                    return;
+                }
+
+            });
+    }
+
+    function trackEventPubKeys(userRawPubKey) {
+        nizkpContract.getPastEvents('pubKeys', { fromBlock: 'latest', toBlock: 'latest' },
+            function (err, results) {
+                if (err) {
+                    $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                    document.getElementById("showNhideError").innerHTML = "An error occured.";
+                    return;
+                }
+                // Else use the data recieved.
+                for (var { returnValues: { pubKeyOne: PkOne, pubKeyTwo: PkTwo, pubKeyThree: PkThree, pubKeyFour: PkFour } } of results) {
+                    console.log('First Public Key is: ' + PkOne);
+                    getPubKeysFromIPFS(userRawPubKey, PkOne, PkTwo, PkThree, PkFour);  // This function retrieves the IPFS Public key obj, decryptes and calls another function to update.
+                }
+
+            });
+    }
+
+    function reloadPg() {
+        window.setTimeout(function () {
+            window.location.href = "./NIZKPforSCawait.html";
+        }, 1500); // Refresh after 1.5 sec.
+    }
+
+    function numberValidation(input) {
+        let count = input.toString().length;
+        if (input == '' || Number(input) == NaN || parseInt(input, 16) == NaN || input < 0 || isNaN(input) == true || count <= 64) {
+            return 0;
+        }
+        else {
+            return 1;
+        }
+    }
+
+    function verifyProof() {
+        console.log("Subtmit Btn clicked")
+        let pubKey = $("#pubKey").val();
+        if (numberValidation(pubKey) == 1) {
+            let txHash = ''
+            let blkNum = ''
+            nizkpContract.methods.AwaitResponse(pubKey).send({
+                from: web3.eth.defaultAccount,
+                gas: 270000  // Increasing Gas to 270000 from the 150000 due to introduction of Provable RNG. Benchmark: 35000
+            }).on('transactionHash', (hash) => {
+                txHash = hash;
+                console.log("Trans. hash is: ", txHash);
+            }).on('receipt', (receipt) => {
+                transReceipt = receipt;
+                blkNum = transReceipt['blockNumber']
+                console.log("Trans. Block Number is: ", blkNum);
+                trackEventMsg();
+                trackEventFailed();
+                trackEventPubKeys(pubKey);        // Check if Public keys from contract are emiited.
+            }).on('error', (error) => {
+                $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                document.getElementById("showNhideError").innerHTML = "Sorry. Error occured. Retry again."
+                reloadPg();
+            });
+            // This displays transaction hash and block number as well as other details from 'receipt' if needed.
+        }
+        else {
+            $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+            document.getElementById("showNhideError").innerHTML = "Invalid input."
+            reloadPg();
+        }
+
+    }
+
+    // Making public keys global.
+    let ringMembers = [];
+
+    function getPubKeysFromIPFS(userRawPubKey, PkOne, PkTwo, PkThree, PkFour) {
+        console.log("Get Public Keys activated.")
+        let contractPubKeyHashes = [PkOne, PkTwo, PkThree, PkFour];
+        if (contractPubKeyHashes[0] == getHash(userRawPubKey)) {
+            const Myipfs = new window.Ipfs()
+            //const ipfs      = window.IpfsHttpClient('/ip4/127.0.0.1/tcp/5001')
+            Myipfs.on('ready', () => {
+                // Resolve the IPNS name or address before data can be retrieved via cat.
+                Myipfs.name.resolve(staticIPNShash, function (err, name) {
+                    if (err) {
+                        console.log("IPNS name resolution failed.");
+                    }
+                    else {
+                        console.log("IPFS equivalent hash is: ", name.path);
+                        // Get the data.
+
+                        Myipfs.cat(name.path, function (error, DataFromIPFS) {
+                            if (error) {
+                                //throw error
+                                console.log("Invalid hash.")
+                                $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                                document.getElementById("showNhideError").innerHTML = "Invalid IPFS hash.";
+                            }
+                            else {
+                                var IPFSstringedData = DataFromIPFS.toString('utf8')
+                                // Setting the decryption key.
+                                //var secretKey = prompt("Please enter IPFS Data decryption key.", );
+                                var secretKey = 'nizkP?2019SWUSTblockchain_Lab112'
+                                console.log("Verifying Key. Please wait...")
+
+                                // Decrypt it before parsing.
+                                try {
+                                    var decryptedBytes = CryptoJS.AES.decrypt(IPFSstringedData, secretKey);
+                                    var BytesString = JSON.parse(decryptedBytes.toString(CryptoJS.enc.Utf8));
+                                }
+                                catch (err) {
+                                    console.log("Sorry. Wrong decryption key.") // Public key pool at IPFS is empty.
+                                    $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                                    document.getElementById("showNhideError").innerHTML = "Sorry! Wrong decryption key.";
+                                    return;
+                                }
+                                if (Object.keys(BytesString).length != 0) {
+                                    console.log("Key successful. Data from IPFS is: ", IPFSstringedData) // This should be same as the unencrypted one sent to IPFS.
+                                    console.log("Decryption successful. Please wait ...")
+                                    console.log("Decrypted data is: ", BytesString);
+                                    // Display the decrypted Public keys to the user. E.g BytesString.pubKeyRepObj.publicKeys;
+                                    let ipfsObjValues = Object.values(BytesString) // These are raw public keys in Array form.
+                                    console.log("Array form of IPFS Object is: ", ipfsObjValues)
+                                    let ipfsObjHashedValues = []; // These are hashed public keys.
+                                    for (var i = 0; i < ipfsObjValues.length; i++) {
+                                        ipfsObjHashedValues[i] = getHash(ipfsObjValues[i])
+                                    }
+                                    console.log("Array form of IPFS content hashed is: ", ipfsObjHashedValues)
+                                    console.log("Contract returned pub. key hashes: ", contractPubKeyHashes)
+                                    // Get the exact array indexes and retrieve the values to be displayed to the user.
+                                    // Contract always returns four public keys hence check for matching indexex.
+                                    let indexOfValues = []
+                                    for (var i = 0; i < contractPubKeyHashes.length; i++) {
+                                        indexOfValues[i] = ipfsObjHashedValues.indexOf(contractPubKeyHashes[i])
+                                    }
+                                    console.log("Indexes to be used is: ", indexOfValues)
+                                    // Having found the matching indexes, retrieve the raw public keys from the IPFS array.
+                                    let locate = [];
+                                    for (i = 0; i < indexOfValues.length; i++) {
+                                        locate[i] = ipfsObjValues[indexOfValues[i]]
+                                    }
+                                    console.log("Locate entries are: ", locate)
+                                    // Display the public keys to the user.
+                                    $("#bottomDIV").show(); // Display the hidden div to accept the comming entries.
+                                    $('tbody', '#fetchedPubKeysArea').append('<tr><td>' + 'Key' + '</td><td>' + 'Public Key' + '</td></tr>')
+                                    $('tbody', '#fetchedPubKeysArea').append('<tr><td>' + 'First' + '</td><td>' + locate[0] + '</td></tr>')
+                                    $('tbody', '#fetchedPubKeysArea').append('<tr><td>' + 'Second' + '</td><td>' + locate[1] + '</td></tr>')
+                                    $('tbody', '#fetchedPubKeysArea').append('<tr><td>' + 'Third' + '</td><td>' + locate[2] + '</td></tr>')
+                                    $('tbody', '#fetchedPubKeysArea').append('<tr><td>' + 'Fouth' + '</td><td>' + locate[3] + '</td></tr>')
+                                    // Push fetched public keys into ring as ring members. 
+                                    ringMembers.push(locate[0], locate[1], locate[2], locate[3])
+                                    // Prepare for signature generation at the frontend.
+                                    $('tbody', '#transactionDataArea').append('<tr><td>' + '<input type="text" id="msgData" placeholder="Input message" name="userData">' + '</td></tr>')
+                                    $('tbody', '#transactionDataArea').append('<tr><td>' + '<input type="number" min="0" id="nonce" placeholder="Input IDevent" name="nonceValue">' + '</td></tr>')
+                                    $('tbody', '#transactionDataArea').append('<tr><td>' + '<button onclick="createLwRS()" class="btn btn-primary btn-large btn-block">Create Signature</button></td></tr>')
+                                }
+                                else {
+                                    console.log("Sorry. Empty IPFS data.") // Public key pool at IPFS is empty.
+                                    $("#showNhideError").show(); // Display the hidden div to accept the comming entries.
+                                    document.getElementById("showNhideError").innerHTML = "Sorry! No public key with IPFS.";
+                                    return;
+                                }
+                            }
+                        })
+                    }
+                })
+            });
+        }
+        else {
+            console.log("Public key and hash mismatch");
+        }
+    }
+
+    class userKey {
+        constructor(p, q) {
+            this.p = p
+            this.q = q
+            this.N = p * q
+        }
+
+        static randomGenerate() {
+
+        }
+    }
+
+    function createLwRS() {
+        console.log("LwRS initialized.")
+        let message = $("#msgData").val();
+        let IDevent = $("#nonce").val();
+        // Generate user's private/secret keys.
+        let ring = []
+        // Value 1 as Identity value for multiplication.
+        ring.push(new userKey(0xd2525ad879ead3282695cf2f9d22ab96e9fb84d56e21e3e749145e0883c6db9b,
+            0x8267a554802a6dc9413de6cc7b2facd13c3b076a1d85ad678115aaeac29da6b8))
+        ring.push(new userKey(ringMembers[1], 1))
+        ring.push(new userKey(ringMembers[2], 1))
+        ring.push(new userKey(ringMembers[3], 1))
+        // Public key computation and Public Key list for Ring members.
+        L = ring.map(user => user.N)
+
+        //let IDevent = 1
+        //let message = "Privacy is vital"
+        console.log("sign ===================")
+        let sign = signature(ring[0], L, message, IDevent)
+        console.log("**********************************************************************")
+        console.log("Ring Signature generated for improved scheme is: ", sign)
+        $('tbody', '#mySignatureArea').append('<tr><td>' + 'Ring Signature[I]' + '</td><td>' + sign.I + '</td></tr>')
+        $('tbody', '#mySignatureArea').append('<tr><td>' + 'Ring Signature[c1]' + '</td><td>' + sign.c1 + '</td></tr>')
+        $('tbody', '#mySignatureArea').append('<tr><td>' + 'Ring Signature[x]' + '</td><td>' + sign.x[0] + ', ' + sign.x[1] + ', ' + sign.x[2] + ', ' + sign.x[3] + '</td></tr>')
+        console.log("**********************************************************************")
+
+        console.log("verify ===================")
+        verify(sign, L, message, IDevent)
+    }
+
+    // Helper functions for LwRS.
+    function getMod(num, N) {
+        if (num < 0) {
+            num = num + (1 - Math.floor(num / N)) * N
+        }
+        return num % N
+    }
+
+    function getQRHash(data, Ni) {
+        let Niq2 = Math.floor(Math.sqrt(Ni))
+        let shaObj = new jsSHA("SHA-256", "TEXT"); // Instantiating of cryptographic hashing function.  
+        shaObj.update(data); // Stream in input.
+        hash = shaObj.getHash("HEX")  // Get digest with specified output type. In this case HEX not TEXT.
+        return new BigNumber(hash, 16).mod(Niq2).pow(2).toNumber()
+    }
+
+    function getHashI(data, Ni) {
+        let shaObj = new jsSHA("SHA-256", "TEXT");
+        //let shaObj =  myjsShaBundle.jsSHA("SHA-256", "TEXT");
+        shaObj.update(data);
+        hash = shaObj.getHash("HEX")
+        return new BigNumber(hash, 16).mod(Ni).toNumber()
+    }
+
+    function buildLmIDeventData(L, m, IDevent) {
+        let str = ""
+        str += L.join("-")
+        str += "||"
+        str += m
+        str += "||"
+        str += IDevent
+        return str
+    }
+
+    function buildhrjData(h, rj) {
+        let str = ""
+        str += h
+        str += "||"
+        str += rj
+        return str
+    }
+
+    function buildpjNjIDeventData(pj, Nj, IDevent) {
+        let str = ""
+        str += pj
+        str += "||"
+        str += Nj
+        str += "||"
+        str += IDevent
+        return str
+    }
+
+    function getRandomFromN(N) {
+        return Math.floor(Math.random() * N)
+    }
+
+    function checkIfInQR(num, Nj) {
+        num = Math.sqrt(num % Nj)
+        if (num > 0 && Math.floor(num) === num) {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    function signature(user, L, message, IDevent) {
+        let j = null
+        for (let i = 0; i < L.length; i++) {
+            if (L[i] === user.N) {
+                j = i
+                break
+            }
+        }
+        if (j === null) throw "j not found."
+
+        console.log(`found signer j === ${j}`)
+        //
+        let h = getHashI(buildLmIDeventData(L, message, IDevent), L[0])
+
+        console.log(`get h === ${h}`)
+
+        // Generate random numbers.
+        let x = []
+        for (let i = 0; i < L.length; i++) {
+            x[i] = getRandomFromN(L[i])
+        }
+
+        console.log(`init random xArr === ${x.join()}`)
+
+        // A stronger Key Image computation to withstand double spending tendency.
+        let k = '' // Commitment.
+        k = (getQRHash((user.q + user.p), user.N)).toString()
+        console.log("+++++++++++++++++++++++++++++++++++++++++++++++++++")
+        console.log("The commitment value is: ", k)
+        $('tbody', '#mySignatureArea').append('<tr><td>' + 'Commitment value' + '</td><td>' + k + '</td></tr>')
+        let I = Math.sqrt(getQRHash(buildpjNjIDeventData(k, user.N, IDevent), user.N)) % user.N
+        console.log("********************************")
+        console.log(`The Stronger key image I is === ${I}`)
+        $('tbody', '#mySignatureArea').append('<tr><td>' + 'Stronger key image' + '</td><td>' + I + '</td></tr>')
+        console.log("*******************************************************")
+
+
+        let c = []
+        //c Computation.
+        let current = j
+        let next = (current + 1) % L.length //j + 1
+        c[next] = getHashI(buildhrjData(h, x[current]), L[next])
+        for (let i = 1; i < L.length; i++) {
+            current = next
+            next = (current + 1) % L.length
+            c[next] = getHashI(buildhrjData(h, (c[current] * I + x[current] * x[current]) % L[current]), L[next])
+        }
+
+        let ti = getMod(x[j] - c[j] * I, L[j])
+        while (!checkIfInQR(ti, L[j])) {
+            let pre = (j - 1 + L.length) % L.length
+            x[pre] = getRandomFromN(L[pre])
+            c[j] = getHashI(buildhrjData(h, (c[pre] * I + x[pre] * x[pre]) % L[pre]), L[j])
+            ti = getMod(x[j] - c[j] * I, L[j])
+        }
+
+        x[j] = Math.sqrt(ti)
+        console.log(`get cArr === ${c.join()}`)
+        console.log(`get xArr === ${x.join()}`)
+        console.log(c[0])
+        return {
+            I,
+            c1: c[0],
+            x: x
+        }
+    }
+
+    function verify(sign, L, message, IDevent) {
+        //h = H1(L||m||IDevent)
+        let h = getHashI(buildLmIDeventData(L, message, IDevent), L[0])
+        console.log(`get h === ${h}`)
+
+        let x = sign.x
+        let c1 = sign.c1
+        let I = sign.I
+        console.log(`get xArr === ${x.join()}`)
+        console.log(c1)
+
+        let r = []
+        let c = []
+        c[0] = c1
+        r[0] = getMod(c[0] * I + x[0] * x[0], L[0])
+        for (let i = 1; i < L.length; i++) {
+            c[i] = getHashI(buildhrjData(h, r[i - 1]), L[i])
+            r[i] = getMod(c[i] * I + x[i] * x[i], L[i])
+        }
+        console.log(`get cArr === ${c.join()}`)
+        console.log(`get rArr === ${r.join()}`)
+        c1 = getHashI(buildhrjData(h, r[L.length - 1]), L[0])
+        console.log(`c1 : ${c1} <===>  c[0]: ${c[0]}`)
+        if (c1 === c[0]) {
+            console.log("**************************************")
+            console.log("1: Signature verification successful.")
+            // Create special div to display.
+            $('tbody', '#mySignatureVoutput').append('<tr style="height:40px; margin:2px; background-color: rgb(161, 230, 184);"><td style="height:40px; width:300px; margin:1px auto;">' + 'Signature verification successful.' + '</td></tr>')
+            console.log("**************************************")
+        } else {
+            console.log("**************************************")
+            console.log("0: Failed Signature verification.")
+            $('tbody', '#mySignatureVoutput').append('<tr style="height:40px; margin:2px; background-color: rgb(153, 115, 104);"><td style="height:40px; width:300px; margin:1px auto;">' + 'Failed Signature verification.' + '</td></tr>')
+            console.log("**************************************")
+        }
+    }
+</script>
+</html>
