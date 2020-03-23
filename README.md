@@ -1,4 +1,4 @@
-# Codes regarding my research area.
+# Privacy preservation for transacting parties on DApps.
 
 # Brief description
 This repository contains a modified JavaScript implementation of Lightweight Ring Signature (LwRS) Scheme, implementation of improved Dual-key Stealth Address Protocol for IoT (DkSAP-IoT) and Non-Interactive Zero-Knowledge Proofs (NIZKP) as a Decentralized Application (DApp) paving way for Privacy-preservation in Blockchain.
