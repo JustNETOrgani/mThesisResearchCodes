@@ -7,7 +7,7 @@ This repository contains a modified JavaScript implementation of Lightweight Rin
 The key image in LwRS is modified making is double-spending resisitant. DkSAP-IoT is improved to include symmetric encryption and data storage on the decentralized platform IPFS/IPNS.
 
 # Testing
-The Smart Contract in use in this framework acts an aggregator of public keys and is tested for vulnerabilities using Oyente (an auto-auditing tool for Smart Contracts) and came out as secured. Tests shows that users incur cost (in terms of gas on Ethereum) of 214,731 which is far lower than existing schemes.
+The Smart Contract in use in this framework acts an aggregator of public keys and is tested for vulnerabilities using Oyente (an auto-auditing tool for Smart Contracts) and came out as secured. Tests show that users incur cost (in terms of gas on Ethereum) of 214,731 which is far lower than existing schemes.
 
 # Requirements
 Chrome browser with MetaMask extension installed.
